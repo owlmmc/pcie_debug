@@ -660,10 +660,11 @@ int fill_mem(device_t *dev, char *cmd)
 	unsigned char d8;
 	unsigned short d16;
 	unsigned int d32;
+	unsigned long long d64;
 
-	/* c, c8, c16, c32 */
+	/* c, c8, c16, c32, c64 */
 	if (cmd[1] == ' ') {
-		status = sscanf(cmd, "%*c %x %x %x %x", &addr, &d32, &len, &inc);
+		status = sscanf(cmd, "%*c %x %llx %x %x", &addr, &d64, &len, &inc);
 		if ((status != 3) && (status != 4)) {
 			printf("Syntax error (use ? for help)\n");
 			/* Don't break out of command processing loop */
@@ -673,7 +674,7 @@ int fill_mem(device_t *dev, char *cmd)
 			inc = 1;
 		}
 	} else {
-		status = sscanf(cmd, "%*c%d %x %x %x %x", &width, &addr, &d32, &len, &inc);
+		status = sscanf(cmd, "%*c%d %x %llx %x %x", &width, &addr, &d64, &len, &inc);
 		if ((status != 3) && (status != 4)) {
 			printf("Syntax error (use ? for help)\n");
 			/* Don't break out of command processing loop */
@@ -695,13 +696,13 @@ int fill_mem(device_t *dev, char *cmd)
 	switch (width) {
 		case 8:
 			for (i = 0; i < len; i++) {
-				d8 = (unsigned char)(d32 + i*inc);
+				d8 = (unsigned char)(d64 + i*inc);
 				write_8(dev, addr+i, d8);
 			}
 			break;
 		case 16:
 			for (i = 0; i < len/2; i++) {
-				d16 = (unsigned short)(d32 + i*inc);
+				d16 = (unsigned short)(d64 + i*inc);
 				if (big_endian == 0) {
 					write_le16(dev, addr+2*i, d16);
 				} else {
@@ -711,10 +712,20 @@ int fill_mem(device_t *dev, char *cmd)
 			break;
 		case 32:
 			for (i = 0; i < len/4; i++) {
+				d32 = (unsigned int)(d64 + i*inc);
 				if (big_endian == 0) {
-					write_le32(dev, addr+4*i, d32 + i*inc);
+					write_le32(dev, addr+4*i, d32);
 				} else {
-					write_be32(dev, addr+4*i, d32 + i*inc);
+					write_be32(dev, addr+4*i, d32);
+				}
+			}
+			break;
+		case 64:
+			for (i = 0; i < len/8; i++) {
+				if (big_endian == 0) {
+					write_le64(dev, addr+8*i, d64 + i*inc);
+				} else {
+					write_be64(dev, addr+8*i, d64 + i*inc);
 				}
 			}
 			break;
