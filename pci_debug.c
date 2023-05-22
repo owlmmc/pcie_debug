@@ -344,7 +344,7 @@ void useCmdFile(device_t *dev, char* cmdFilePath)
 			}
 			firstLine = 0;
 		}else{
-			verbosity>=2?printf("Send: %s", line, len):0;
+			verbosity>=2?printf("Send: %s", line):0;
 			status = process_command(dev, line);
 			if (status < 0) {
 				printf("Warning: Command failure - %s", line);
