@@ -141,10 +141,22 @@ read_be32(
 	device_t    *dev,
 	unsigned int addr);
 
+static void
+write_le64(
+	device_t    *dev,
+	unsigned int addr,
+	unsigned long long data);
+
 static unsigned long long
 read_le64(
 	device_t    *dev,
 	unsigned int addr);
+
+static void
+write_be64(
+	device_t    *dev,
+	unsigned int addr,
+	unsigned long long data);
 
 static unsigned long long
 read_be64(
@@ -579,17 +591,18 @@ int change_mem(device_t *dev, char *cmd)
 	unsigned char d8;
 	unsigned short d16;
 	unsigned int d32;
+	unsigned long long d64;
 
-	/* c, c8, c16, c32 */
+	/* c, c8, c16, c32, c64 */
 	if (cmd[1] == ' ') {
-		status = sscanf(cmd, "%*c %x %x", &addr, &d32);
+		status = sscanf(cmd, "%*c %x %llx", &addr, &d64);
 		if (status != 2) {
 			printf("Syntax error (use ? for help)\n");
 			/* Don't break out of command processing loop */
 			return 0;
 		}
 	} else {
-		status = sscanf(cmd, "%*c%d %x %x", &width, &addr, &d32);
+		status = sscanf(cmd, "%*c%d %x %llx", &width, &addr, &d64);
 		if (status != 3) {
 			printf("Syntax error (use ? for help)\n");
 			/* Don't break out of command processing loop */
@@ -602,11 +615,11 @@ int change_mem(device_t *dev, char *cmd)
 	}
 	switch (width) {
 		case 8:
-			d8 = (unsigned char)d32;
+			d8 = (unsigned char)d64;
 			write_8(dev, addr, d8);
 			break;
 		case 16:
-			d16 = (unsigned short)d32;
+			d16 = (unsigned short)d64;
 			if (big_endian == 0) {
 				write_le16(dev, addr, d16);
 			} else {
@@ -614,10 +627,18 @@ int change_mem(device_t *dev, char *cmd)
 			}
 			break;
 		case 32:
+			d32 = (unsigned int)d64;
 			if (big_endian == 0) {
 				write_le32(dev, addr, d32);
 			} else {
 				write_be32(dev, addr, d32);
+			}
+			break;
+		case 64:
+			if (big_endian == 0) {
+				write_le64(dev, addr, d64);
+			} else {
+				write_be64(dev, addr, d64);
 			}
 			break;
 		default:
@@ -862,6 +883,19 @@ read_be32(
 	return data;
 }
 
+static void
+write_le64(
+	device_t      *dev,
+	unsigned int   addr,
+	unsigned long long data)
+{
+	if (__BYTE_ORDER != __LITTLE_ENDIAN) {
+		data = bswap_64(data);
+	}
+	*(volatile unsigned long long *)(dev->addr + addr) = data;
+	msync((void *)(dev->addr + addr), 4, MS_SYNC | MS_INVALIDATE);
+}
+
 static unsigned long long
 read_le64(
 	device_t      *dev,
@@ -872,6 +906,19 @@ read_le64(
 		data = bswap_64(data);
 	}
 	return data;
+}
+
+static void
+write_be64(
+	device_t      *dev,
+	unsigned int   addr,
+	unsigned long long data)
+{
+	if (__BYTE_ORDER == __LITTLE_ENDIAN) {
+		data = bswap_64(data);
+	}
+	*(volatile unsigned long long *)(dev->addr + addr) = data;
+	msync((void *)(dev->addr + addr), 4, MS_SYNC | MS_INVALIDATE);
 }
 
 static unsigned long long
