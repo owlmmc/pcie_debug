@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <byteswap.h>
+#include <getopt.h>
 
 /* Readline support */
 #include <readline/readline.h>
