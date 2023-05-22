@@ -141,6 +141,16 @@ read_be32(
 	device_t    *dev,
 	unsigned int addr);
 
+static unsigned long long
+read_le64(
+	device_t    *dev,
+	unsigned int addr);
+
+static unsigned long long
+read_be64(
+	device_t    *dev,
+	unsigned int addr);
+
 /* Usage */
 static void show_usage()
 {
@@ -413,6 +423,7 @@ display_help(
 	printf("                              8   - 8-bit access\n");
 	printf("                              16  - 16-bit access\n");
 	printf("                              32  - 32-bit access (default)\n");
+	printf("                              64  - 64-bit access\n");
 	printf("  c[width] addr val         Change memory at addr to val\n");
 	printf("  e                         Print the endian access mode\n");
 	printf("  e[mode]                   Change the endian access mode\n");
@@ -471,8 +482,9 @@ int display_mem(device_t *dev, char *cmd)
 	unsigned char d8;
 	unsigned short d16;
 	unsigned int d32;
+	unsigned long long d64;
 
-	/* d, d8, d16, d32 */
+	/* d, d8, d16, d32, d64 */
 	if (cmd[1] == ' ') {
 		status = sscanf(cmd, "%*c %x %x", &addr, &len);
 		if (status != 2) {
@@ -533,6 +545,20 @@ int display_mem(device_t *dev, char *cmd)
 					d32 = read_be32(dev, addr+i);
 				}
 				printf("%.8X ", d32);
+			}
+			printf("\n");
+			break;
+		case 64:
+			for (i = 0; i < len; i+=8) {
+				if ((i%16) == 0) {
+					printf("\n%.8X: ", addr+i);
+				}
+				if (big_endian == 0) {
+					d64 = read_le64(dev, addr+i);
+				} else {
+					d64 = read_be64(dev, addr+i);
+				}
+				printf("%.16llX ", d64);
 			}
 			printf("\n");
 			break;
@@ -836,3 +862,26 @@ read_be32(
 	return data;
 }
 
+static unsigned long long
+read_le64(
+	device_t      *dev,
+	unsigned int   addr)
+{
+	unsigned long long data = *(volatile unsigned long long *)(dev->addr + addr);
+	if (__BYTE_ORDER != __LITTLE_ENDIAN) {
+		data = bswap_64(data);
+	}
+	return data;
+}
+
+static unsigned long long
+read_be64(
+	device_t      *dev,
+	unsigned int   addr)
+{
+	unsigned long long data = *(volatile unsigned long long *)(dev->addr + addr);
+	if (__BYTE_ORDER == __LITTLE_ENDIAN) {
+		data = bswap_64(data);
+	}
+	return data;
+}
